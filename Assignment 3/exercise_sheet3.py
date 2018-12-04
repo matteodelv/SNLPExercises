@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+# Matteo Del Vecchio - Uni-ID: 3885057
+
 ################################################################################
 ## SNLP exercise sheet 3
 ################################################################################
@@ -62,8 +66,32 @@ class MaxEntModel(object):
         '''
         self.corpus = corpus
         
-        # your code here
-    
+        wordSet = set()
+        self.labels = set()
+
+        # Getting X and Y sets (words and tags)
+        for sentence in self.corpus:
+            words = list(map(lambda tuple: tuple[0], sentence))
+            labels = list(map(lambda tuple: tuple[1], sentence))
+            wordSet.update(words)
+            self.labels.update(labels)
+
+        # Creating feature set as cartesian product between X and Y (word|tag) and also between Y and Y (tag|tag)
+        featureSet = set()
+        emissionFeatures = [(word, tag) for word in wordSet for tag in self.labels]
+        transitionFeatures = [(tag1, tag2) for tag1 in self.labels for tag2 in self.labels]
+        featureSet.update(emissionFeatures)
+        featureSet.update(transitionFeatures)
+
+        # Initializing feature_indices dictionary assigning an index to every feature
+        index = 0
+        self.feature_indices = dict()
+        for feature in featureSet:
+            self.feature_indices[feature] = index
+            index += 1
+
+        # Initializing model parameters as numpy array of |F| ones
+        self.theta = np.ones(len(self.feature_indices))
     
     
     
@@ -195,3 +223,12 @@ class MaxEntModel(object):
         pass
     
 
+def main():
+    corpus = import_corpus('corpus_pos.txt')
+
+    model = MaxEntModel()
+    model.initialize(corpus)
+
+
+if __name__ == '__main__':
+    main()
