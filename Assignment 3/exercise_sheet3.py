@@ -80,6 +80,10 @@ class MaxEntModel(object):
         featureSet = set()
         emissionFeatures = [(word, tag) for word in wordSet for tag in self.labels]
         transitionFeatures = [(tag1, tag2) for tag1 in self.labels for tag2 in self.labels]
+
+        featureSet.update([("start", tag) for tag in self.labels])
+        #self.labels.update(["start"])
+
         featureSet.update(emissionFeatures)
         featureSet.update(transitionFeatures)
 
@@ -92,6 +96,9 @@ class MaxEntModel(object):
 
         # Initializing model parameters as numpy array of |F| ones
         self.theta = np.ones(len(self.feature_indices))
+
+        print("Numeber of features = ", len(self.feature_indices))
+        print(self.feature_indices)
     
     
     
@@ -104,11 +111,13 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: (numpy) array containing only zeros and ones.
         '''
-        
-        # your code here
-        
-        pass
-        
+        activeFeatures = np.zeros(len(self.feature_indices))
+        for key in self.feature_indices.keys():
+            firstElement = key[0]
+            secondElement = key[1]
+            activeFeatures[self.feature_indices[key]] = 1 if (word == firstElement and label == secondElement) or (prev_label == firstElement and label == secondElement) else 0
+            
+        return activeFeatures        
 
 
 
@@ -120,16 +129,17 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: float
         '''
-        
-        # your code here
-        
-        pass
-    
+        denom = 0.0
+        for label in self.labels:
+            activeFeatures = self.get_active_features(word, label, prev_label)
+            denom += np.exp(np.dot(self.theta, activeFeatures))
+
+        return 1/denom
     
     
     
     # Exercise 2 b) ###################################################################
-    def conditional_probability(self, label, word, prev_label):
+    def conditional_probability(self, word, label, prev_label):
         '''
         Compute the conditional probability of a label given a word x_i.
         Parameters: label: string; we are interested in the conditional probability of this label
@@ -137,8 +147,13 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: float
         '''
-        
-        # your code here    
+        print("Cond prob")
+        norm = self.cond_normalization_factor(word, prev_label)
+        exp = np.exp(np.dot(self.theta, self.get_active_features(word, label, prev_label)))
+        print(norm)
+        print(exp)
+        print(norm * exp)
+        return norm * exp
     
     
     
@@ -152,10 +167,7 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: (numpy) array containing the empirical feature count
         '''
-        
-        # your code here
-        
-        pass
+        print(self.get_active_features(word, label, prev_label))
     
     
     
@@ -224,10 +236,18 @@ class MaxEntModel(object):
     
 
 def main():
-    corpus = import_corpus('corpus_pos.txt')
+    corpus = import_corpus('prova.txt')
+
+    print(corpus)
 
     model = MaxEntModel()
     model.initialize(corpus)
+
+    print(model.labels)
+    # print(model.get_active_features("b", "q", "q"))
+    # print(model.cond_normalization_factor("a", "r"))
+    print(model.conditional_probability("b", "q", "q"))
+    print(model.empirical_feature_count("a", "q", "start"))
 
 
 if __name__ == '__main__':
