@@ -8,6 +8,7 @@
 import math
 import sys
 import numpy as np
+import random
 
 
 '''
@@ -177,10 +178,16 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: (numpy) array containing the expected feature count
         '''
-        
-        # your code here
-        
-        pass
+        result = np.zeros(len(self.feature_indices))
+        for feature in self.feature_indices.keys():
+            for label in self.labels:
+                prob = self.conditional_probability(word, label, prev_label)
+                activeFeaturesForWord = self.get_active_features(word, label, prev_label)
+                featureIndex = self.feature_indices[feature]
+                result[featureIndex] += prob * activeFeaturesForWord[featureIndex]
+
+        return result
+
     
     
     
@@ -194,10 +201,8 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
                     learning_rate: float
         '''
-        
-        # your code here
-        
-        pass
+        self.theta = self.theta + learning_rate * (self.empirical_feature_count(word, label, prev_label) - self.expected_feature_count(word, prev_label))
+        print(self.theta)
     
     
     
@@ -209,10 +214,13 @@ class MaxEntModel(object):
         Parameters: number_iterations: int; number of parameter updates to do
                     learning_rate: float
         '''
-        
-        # your code here
-        
-        pass
+        for _ in range(number_iterations):
+            randomSentence = random.choice(self.corpus)
+            randomIndex = random.randrange(len(randomSentence))
+            word = randomSentence[randomIndex][0]
+            label = randomSentence[randomIndex][1]
+            prevLabel = randomSentence[randomIndex-1][1] if randomIndex > 0 else "start"
+            self.parameter_update(word, label, prevLabel, learning_rate)
     
     
     
@@ -231,7 +239,7 @@ class MaxEntModel(object):
         pass
     
 
-    
+
     # Exercise 5 a) ###################################################################
     def empirical_feature_count_batch(self, sentences):
         '''
@@ -259,16 +267,16 @@ class MaxEntModel(object):
         pass
 
 
-    # Exercise 5 c) ###################################################################
-    def evaluate(corpus):
-        '''
-        Compare the training methods 'train' and 'train_batch' in terms of convergence rate
-        Parameters: corpus: list of list; a corpus returned by 'import_corpus'
-        '''
-        
-        # your code here
-        
-        pass
+# Exercise 5 c) ###################################################################
+def evaluate(corpus):
+    '''
+    Compare the training methods 'train' and 'train_batch' in terms of convergence rate
+    Parameters: corpus: list of list; a corpus returned by 'import_corpus'
+    '''
+    
+    # your code here
+    
+    pass
 
 
 def main():
@@ -279,14 +287,14 @@ def main():
     model = MaxEntModel()
     model.initialize(corpus)
 
-    print(model.labels)
     # print(model.get_active_features("b", "q", "q"))
     # print(model.cond_normalization_factor("a", "r"))
     print(model.conditional_probability("b", "q", "q"))
-    model.empirical_feature_count("a", "q", "start")
-    model.empirical_feature_count("b", "q", "start")
-    model.empirical_feature_count("a", "r", "start")
-    model.empirical_feature_count("b", "r", "start")
+    print(model.empirical_feature_count("a", "q", "start"))
+    print(model.expected_feature_count("a", "start"))
+    model.parameter_update("a", "q", "start", 0.1)
+    model.train(3)
+
 
 
 if __name__ == '__main__':
