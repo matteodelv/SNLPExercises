@@ -147,12 +147,8 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: float
         '''
-        print("Cond prob")
         norm = self.cond_normalization_factor(word, prev_label)
         exp = np.exp(np.dot(self.theta, self.get_active_features(word, label, prev_label)))
-        print(norm)
-        print(exp)
-        print(norm * exp)
         return norm * exp
     
     
@@ -167,7 +163,7 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: (numpy) array containing the empirical feature count
         '''
-        print(self.get_active_features(word, label, prev_label))
+        return self.get_active_features(word, label, prev_label)
     
     
     
@@ -235,6 +231,46 @@ class MaxEntModel(object):
         pass
     
 
+    
+    # Exercise 5 a) ###################################################################
+    def empirical_feature_count_batch(self, sentences):
+        '''
+        Predict the empirical feature count for a set of sentences
+        Parameters: sentences: list; a list of sentences; should be a sublist of the list returnd by 'import_corpus'
+        Returns: (numpy) array containing the empirical feature count
+        '''
+        
+        # your code here   
+    
+    
+    
+    # Exercise 5 b) ###################################################################
+    def train_batch(self, number_iterations, batch_size, learning_rate=0.1):
+        '''
+        Implement the training procedure which uses 'batch_size' sentences from to training corpus
+        to compute the gradient.
+        Parameters: number_iterations: int; number of parameter updates to do
+                    batch_size: int; number of sentences to use in each iteration
+                    learning_rate: float
+        '''
+        
+        # your code here
+        
+        pass
+
+
+    # Exercise 5 c) ###################################################################
+    def evaluate(corpus):
+        '''
+        Compare the training methods 'train' and 'train_batch' in terms of convergence rate
+        Parameters: corpus: list of list; a corpus returned by 'import_corpus'
+        '''
+        
+        # your code here
+        
+        pass
+
+
 def main():
     corpus = import_corpus('prova.txt')
 
@@ -247,7 +283,10 @@ def main():
     # print(model.get_active_features("b", "q", "q"))
     # print(model.cond_normalization_factor("a", "r"))
     print(model.conditional_probability("b", "q", "q"))
-    print(model.empirical_feature_count("a", "q", "start"))
+    model.empirical_feature_count("a", "q", "start")
+    model.empirical_feature_count("b", "q", "start")
+    model.empirical_feature_count("a", "r", "start")
+    model.empirical_feature_count("b", "r", "start")
 
 
 if __name__ == '__main__':
