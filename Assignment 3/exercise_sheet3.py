@@ -233,10 +233,12 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: string; most probable label
         '''
-        
-        # your code here
-        
-        pass
+        probs = np.zeros(len(self.labels))
+        labelsList = list(self.labels)
+        for i in range(len(self.labels)):
+            probs[i] = self.conditional_probability(word, labelsList[i], prev_label)
+
+        return labelsList[np.argmax(probs)]
     
 
 
@@ -289,11 +291,12 @@ def main():
 
     # print(model.get_active_features("b", "q", "q"))
     # print(model.cond_normalization_factor("a", "r"))
-    print(model.conditional_probability("b", "q", "q"))
-    print(model.empirical_feature_count("a", "q", "start"))
-    print(model.expected_feature_count("a", "start"))
-    model.parameter_update("a", "q", "start", 0.1)
+    # print(model.conditional_probability("b", "q", "q"))
+    # print(model.empirical_feature_count("a", "q", "start"))
+    # print(model.expected_feature_count("a", "start"))
+    # model.parameter_update("a", "q", "start", 0.1)
     model.train(3)
+    print(model.predict("a", "start") )
 
 
 
