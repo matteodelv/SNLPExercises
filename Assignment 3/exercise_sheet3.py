@@ -57,6 +57,9 @@ class MaxEntModel(object):
     # has to be set by the method 'initialize'
     labels = None
     
+    activeFeatures = None
+    emFeatureCounts = None
+    exFeatureCounts = None
     
     # Exercise 1 a) ###################################################################
     def initialize(self, corpus):
@@ -69,6 +72,10 @@ class MaxEntModel(object):
         
         wordSet = set()
         self.labels = set()
+
+        self.activeFeatures = dict()
+        self.emFeatureCounts = dict()
+        self.exFeatureCounts = dict()
 
         # Getting X and Y sets (words and tags)
         for sentence in self.corpus:
@@ -112,13 +119,28 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: (numpy) array containing only zeros and ones.
         '''
+        afKey = (word, label, prev_label)
+        #print(key)
+
+        print("if")
+
+        if self.activeFeatures.get(afKey, None) is not None:
+            # print("if")
+            return self.activeFeatures[afKey]
+
         activeFeatures = np.zeros(len(self.feature_indices))
         for key in self.feature_indices.keys():
             firstElement = key[0]
             secondElement = key[1]
             activeFeatures[self.feature_indices[key]] = 1 if (word == firstElement and label == secondElement) or (prev_label == firstElement and label == secondElement) else 0
-            
-        return activeFeatures        
+        # print("after if")
+        self.activeFeatures[afKey] = activeFeatures
+        # print(wlpkey, self.activeFeatures[wlpkey] is not None)
+        #print(self.activeFeatures)
+
+        print(afKey, activeFeatures)
+
+        return self.activeFeatures[afKey]        
 
 
 
@@ -164,7 +186,12 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: (numpy) array containing the empirical feature count
         '''
-        return self.get_active_features(word, label, prev_label)
+        emKey = (word, label, prev_label)
+        if self.emFeatureCounts.get(emKey, None) is not None:
+            return self.emFeatureCounts[emKey]
+
+        self.emFeatureCounts[emKey] = self.get_active_features(word, label, prev_label)
+        return self.emFeatureCounts[emKey]
     
     
     
@@ -178,6 +205,12 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
         Returns: (numpy) array containing the expected feature count
         '''
+        exKey = (word, prev_label)
+        if self.exFeatureCounts.get(exKey, None) is not None:
+            print("if")
+            return self.exFeatureCounts[exKey]
+
+        print("else")
         result = np.zeros(len(self.feature_indices))
         for feature in self.feature_indices.keys():
             for label in self.labels:
@@ -186,7 +219,8 @@ class MaxEntModel(object):
                 featureIndex = self.feature_indices[feature]
                 result[featureIndex] += prob * activeFeaturesForWord[featureIndex]
 
-        return result
+        self.exFeatureCounts[exKey] = result
+        return self.exFeatureCounts[exKey]
 
     
     
@@ -201,19 +235,21 @@ class MaxEntModel(object):
                     prev_label: string; the label of the word at position i-1
                     learning_rate: float
         '''
+        print("parameter update")
         self.theta = self.theta + learning_rate * (self.empirical_feature_count(word, label, prev_label) - self.expected_feature_count(word, prev_label))
-        print(self.theta)
+        print("updated theta values: ", self.theta[self.theta != 1.0])
     
     
     
     
     # Exercise 4 b) ###################################################################
-    def train(self, number_iterations, learning_rate=0.1):
+    def train(self, number_iterations, learning_rate=0.5):
         '''
         Implement the training procedure.
         Parameters: number_iterations: int; number of parameter updates to do
                     learning_rate: float
         '''
+        print("train")
         for _ in range(number_iterations):
             randomSentence = random.choice(self.corpus)
             randomIndex = random.randrange(len(randomSentence))
@@ -249,10 +285,39 @@ class MaxEntModel(object):
         Parameters: sentences: list; a list of sentences; should be a sublist of the list returnd by 'import_corpus'
         Returns: (numpy) array containing the empirical feature count
         '''
-        
-        # your code here   
+        emFeatureCounts = np.zeros(len(self.feature_indices))
+        for sentence in sentences:
+            for i in range(len(sentence)):
+                word = sentence[i][0]
+                label = sentence[i][1]
+                prevLabel = sentence[i-1][1] if i > 0 else "start"
+                emFeatureCounts += self.empirical_feature_count(word, label, prevLabel)
+
+        return emFeatureCounts
+
     
     
+    
+    
+    # Exercise 5 a) ###################################################################
+    def expected_feature_count_batch(self, sentences):
+        '''
+        Predict the expected feature count for a set of sentences
+        Parameters: sentences: list; a list of sentences; should be a sublist of the list returnd by 'import_corpus'
+        Returns: (numpy) array containing the expected feature count
+        '''
+        exFeatureCounts = np.zeros(len(self.feature_indices))
+        print("number of sentences: ", len(sentences))
+        for sentence in sentences:
+            print("length of i-th sentence: ", len(sentence))
+            for i in range(len(sentence)):
+                word = sentence[i][0]
+                prevLabel = sentence[i-1][1] if i > 0 else "start"
+                exFeatureCounts += self.expected_feature_count(word, prevLabel)
+
+        return exFeatureCounts
+    
+
     
     # Exercise 5 b) ###################################################################
     def train_batch(self, number_iterations, batch_size, learning_rate=0.1):
@@ -263,10 +328,9 @@ class MaxEntModel(object):
                     batch_size: int; number of sentences to use in each iteration
                     learning_rate: float
         '''
-        
-        # your code here
-        
-        pass
+        for _ in range(number_iterations):
+            randomSentences = random.sample(self.corpus, batch_size)
+            self.theta = self.theta + learning_rate * (self.empirical_feature_count_batch(sentences) - self.expected_feature_count_batch(sentences))
 
 
 # Exercise 5 c) ###################################################################
@@ -284,19 +348,39 @@ def evaluate(corpus):
 def main():
     corpus = import_corpus('prova.txt')
 
+    #print(corpus)
+
+    #corpus = corpus[:20]
+
     print(corpus)
 
     model = MaxEntModel()
     model.initialize(corpus)
 
     # print(model.get_active_features("b", "q", "q"))
-    # print(model.cond_normalization_factor("a", "r"))
+    # print(model.get_active_features("a", "q", "start"))
+    # print(model.get_active_features("b", "r", "q"))
+    # print(model.get_active_features("b", "r", "start"))
+
+    print(model.cond_normalization_factor("a", "start"))
     # print(model.conditional_probability("b", "q", "q"))
     # print(model.empirical_feature_count("a", "q", "start"))
     # print(model.expected_feature_count("a", "start"))
     # model.parameter_update("a", "q", "start", 0.1)
-    model.train(3)
-    print(model.predict("a", "start") )
+    #print(model.activeFeatures)
+    #model.train(2)
+    # print(model.predict("a", "start") )
+    # print(model.activeFeatures)
+    #print("number of computed features: ", len(model.activeFeatures))
+
+    #sentences = random.sample(corpus, 1)
+    # sentences = [corpus[0]]
+    # em = model.empirical_feature_count_batch(sentences)
+    # ex = model.expected_feature_count_batch(sentences)
+    # print("empirical counts != 0")
+    # print(em[em != 0])
+    # print("expected counts != 0")
+    # print(ex[ex != 0])
 
 
 
