@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+# Matteo Del Vecchio - Uni-ID: 3885057
+
 ################################################################################
 ## SNLP exercise sheet 4
 ################################################################################
@@ -59,8 +63,32 @@ class LinearChainCRF(object):
         '''
         self.corpus = corpus
         
-        # ...
-        
+        self.features = dict()
+        self.labels = set()
+
+        wordSet = set()
+
+        for sentence in self.corpus:
+            words = list(map(lambda tuple: tuple[0], sentence))
+            labels = list(map(lambda tuple: tuple[1], sentence))
+            wordSet.update(words)
+            self.labels.update(labels)
+
+        features = set()
+        emFeatures = [(word, label) for word in wordSet for label in self.labels]
+        trFeatures = [(prevLabel, label) for prevLabel in self.labels for label in self.labels]
+        startFeatures = [('start', label) for label in self.labels]
+
+        features.update(emFeatures)
+        features.update(trFeatures)
+        features.update(startFeatures)
+
+        index = 0
+        for feature in features:
+            self.features[feature] = index
+            index += 1
+
+        self.theta = np.ones(len(self.features))
     
         
 
@@ -173,4 +201,20 @@ class LinearChainCRF(object):
         
         pass
 
-    
+
+
+def main():
+    corpus = import_corpus('corpus_pos.txt')
+
+    model = LinearChainCRF()
+    model.initialize(corpus)
+
+    print(model.features)
+    print()
+    print(model.labels)
+    print()
+    print(model.theta)
+
+
+if __name__ == '__main__':
+    main()
