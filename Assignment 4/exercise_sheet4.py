@@ -55,12 +55,18 @@ class LinearChainCRF(object):
     
     # set containing all lables observed in the corpus 'self.corpus'
     labels = None
+
+    activeFeatures = None
+    emFeatureCounts = None
     
     
     def initialize(self, corpus):
         '''
         build set two sets 'self.features' and 'self.labels'
         '''
+        self.activeFeatures = dict()
+        self.emFeatureCounts = dict()
+
         self.corpus = corpus
         
         self.features = dict()
@@ -90,7 +96,56 @@ class LinearChainCRF(object):
 
         self.theta = np.ones(len(self.features))
     
-        
+    
+    def get_active_features(self, word, label, prev_label):
+        '''
+        Compute the vector of active features.
+        Parameters: word: string; a word at some position i of a given sentence
+                    label: string; a label assigned to the given word
+                    prev_label: string; the label of the word at position i-1
+        Returns: (numpy) array containing only zeros and ones.
+        '''
+        afKey = (word, label, prev_label)
+        if self.activeFeatures.get(afKey, None) is not None:
+            return self.activeFeatures[afKey]
+
+        activeFeatures = set()
+        for key in self.features.keys():
+            firstElement = key[0]
+            secondElement = key[1]
+            featureIndex = self.features[key]
+            if (word == firstElement and label == secondElement) or (prev_label == firstElement and label == secondElement):
+                activeFeatures.add(featureIndex)
+
+        self.activeFeatures[afKey] = activeFeatures
+        return self.activeFeatures[afKey]
+
+
+    def empirical_feature_count(self, word, label, prev_label):
+        '''
+        Compute the empirical feature count given a word, the actual label of this word and the label of the previous word.
+        Parameters: word: string; a word x_i some position i of a given sentence
+                    label: string; the actual label of the given word
+                    prev_label: string; the label of the word at position i-1
+        Returns: (numpy) array containing the empirical feature count
+        '''
+        emKey = (word, label, prev_label)
+        if self.emFeatureCounts.get(emKey, None) is not None:
+            return self.emFeatureCounts[emKey]
+
+        result = np.zeros(len(self.features))
+        activeFeatures = self.get_active_features(word, label, prev_label)
+        for index in activeFeatures:
+            result[index] = 1
+
+        self.emFeatureCounts[emKey] = result
+        return self.emFeatureCounts[emKey]
+
+
+    def fi(label, prevLabel, word):
+        activeFeatures = self.get_active_features(word, label, prevLabel)
+        expArg = sum(map(lambda i: self.theta[i], activeFeatures))
+        return np.exp(expArg)
 
 
     # Exercise 1 a) ###################################################################
@@ -100,12 +155,28 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of forward variables
         '''
-        
-        # your code here
-        
-        pass
-        
-        
+        forwardMatrix = [[0 for x in range(len(sentence))] for y in range(len(self.labels))]
+
+        ## INIT
+        labelsList = list(self.labels)
+        for j in range(len(labelsList)):
+            word = sentence[0][0]
+            prevLabel = 'start'
+            forwardMatrix[j][0] = self.fi(labelsList[j], prevLabel, word)
+
+        ## INDUCTION
+        for i in range(1, len(sentence)):
+            for j in range(len(labelsList)):
+                word = sentence[i][0]
+                label = labelsList[j]
+                sum = 0
+                for k in range(len(labelsList)):
+                    prevLabel = labelsList[k]
+                    fi = self.fi(label, prevLabel, word)
+                    prevAlpha = forwardMatrix[k][i-1]
+                    sum += fi * prevAlpha
+                forwardMatrix[j][i] = sum
+  
         
         
     def backward_variables(self, sentence):
