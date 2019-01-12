@@ -8,7 +8,7 @@
 import math
 import sys
 import numpy as np
-
+from pprint import pprint
 
 '''
 This function can be used for importing the corpus.
@@ -142,7 +142,7 @@ class LinearChainCRF(object):
         return self.emFeatureCounts[emKey]
 
 
-    def fi(label, prevLabel, word):
+    def psi(self, label, prevLabel, word):
         activeFeatures = self.get_active_features(word, label, prevLabel)
         expArg = sum(map(lambda i: self.theta[i], activeFeatures))
         return np.exp(expArg)
@@ -155,27 +155,29 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of forward variables
         '''
-        forwardMatrix = [[0 for x in range(len(sentence))] for y in range(len(self.labels))]
+        labelsList = list(map(lambda tuple: tuple[1], sentence))
+        forwardMatrix = [[0 for x in range(len(sentence))] for y in range(len(labelsList))]
 
         ## INIT
-        labelsList = list(self.labels)
         for j in range(len(labelsList)):
             word = sentence[0][0]
             prevLabel = 'start'
-            forwardMatrix[j][0] = self.fi(labelsList[j], prevLabel, word)
+            forwardMatrix[j][0] = self.psi(labelsList[j], prevLabel, word)
 
         ## INDUCTION
         for i in range(1, len(sentence)):
-            for j in range(len(labelsList)):
+            for j in range(len(labelsList)): # vanno usate tutte le label oppure solo quelle presenti nella frase in esame????
                 word = sentence[i][0]
                 label = labelsList[j]
                 sum = 0
                 for k in range(len(labelsList)):
                     prevLabel = labelsList[k]
-                    fi = self.fi(label, prevLabel, word)
+                    fi = self.psi(label, prevLabel, word)
                     prevAlpha = forwardMatrix[k][i-1]
                     sum += fi * prevAlpha
                 forwardMatrix[j][i] = sum
+
+        return forwardMatrix
   
         
         
@@ -185,10 +187,25 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of backward variables
         '''
+        labelsList = list(map(lambda tuple: tuple[1], sentence))
+        backwardMatrix = [[1 for x in range(len(sentence))] for y in range(len(labelsList))]
         
-        # your code here
-        
-        pass
+        ## INIT phase is not needed as the matrix is already initialized with ones
+
+        ## INDUCTION
+        for i in range(len(sentence)-2, -1, -1):
+            for j in range(len(labelsList)):
+                word = sentence[i][0]
+                prevLabel = labelsList[j]
+                sum = 0
+                for k in range(len(labelsList)):
+                    label = labelsList[k]
+                    fi = self.psi(label, prevLabel, word)
+                    prevBeta = backwardMatrix[k][i+1]
+                    sum += fi * prevBeta
+                backwardMatrix[j][i] = sum
+
+        return backwardMatrix
         
         
         
@@ -200,10 +217,29 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: float;
         '''
+        '''
+        backwardMatrix = self.backward_variables(sentence)
+        labelsList = list(map(lambda tuple: tuple[1], sentence))
+        word = sentence[0][0]
+        prevLabel = 'start' # non so se è questa... cos'è y0? è riferito alla sentence?
+
+        z = 0
+        for i in range(len(labelsList)):
+            label = labelsList[i]
+            fi = self.psi(label, prevLabel, word)
+            betaOne = backwardMatrix[i][0]
+            z += fi * betaOne
+        '''
         
-        # your code here
+        forwardMatrix = self.forward_variables(sentence)
+        labelsList = list(map(lambda tuple: tuple[1], sentence))
+        lastWordIndex = len(sentence)-1
+
+        z = 0
+        for i in range(len(labelsList)):
+            z += forwardMatrix[i][lastWordIndex]
         
-        pass
+        return z
         
         
         
@@ -275,16 +311,24 @@ class LinearChainCRF(object):
 
 
 def main():
-    corpus = import_corpus('corpus_pos.txt')
+    corpus = import_corpus('corpus_pos2.txt')
 
     model = LinearChainCRF()
     model.initialize(corpus)
 
-    print(model.features)
-    print()
-    print(model.labels)
-    print()
-    print(model.theta)
+    matrix = model.forward_variables(corpus[0])
+    pprint(matrix)
+
+    matrix = model.backward_variables(corpus[0])
+    pprint(matrix)
+
+    zeta = model.compute_z(corpus[0])
+    print(zeta)
+    # print(model.features)
+    # print()
+    # print(model.labels)
+    # print()
+    # print(model.theta)
 
 
 if __name__ == '__main__':
