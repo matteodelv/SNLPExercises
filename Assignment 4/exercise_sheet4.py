@@ -155,9 +155,9 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of forward variables
         '''
-        labelsList = list(map(lambda tuple: tuple[1], sentence))
-        forwardMatrix = [[0 for x in range(len(sentence))] for y in range(len(labelsList))]
+        forwardMatrix = [[0 for x in range(len(sentence))] for y in range(len(self.labels))]
 
+        labelsList = list(self.labels)
         ## INIT
         for j in range(len(labelsList)):
             word = sentence[0][0]
@@ -166,15 +166,15 @@ class LinearChainCRF(object):
 
         ## INDUCTION
         for i in range(1, len(sentence)):
-            for j in range(len(labelsList)): # vanno usate tutte le label oppure solo quelle presenti nella frase in esame????
+            for j in range(len(labelsList)):
                 word = sentence[i][0]
                 label = labelsList[j]
                 sum = 0
                 for k in range(len(labelsList)):
                     prevLabel = labelsList[k]
-                    fi = self.psi(label, prevLabel, word)
+                    psi = self.psi(label, prevLabel, word)
                     prevAlpha = forwardMatrix[k][i-1]
-                    sum += fi * prevAlpha
+                    sum += psi * prevAlpha
                 forwardMatrix[j][i] = sum
 
         return forwardMatrix
@@ -187,11 +187,11 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of backward variables
         '''
-        labelsList = list(map(lambda tuple: tuple[1], sentence))
-        backwardMatrix = [[1 for x in range(len(sentence))] for y in range(len(labelsList))]
+        backwardMatrix = [[1 for x in range(len(sentence))] for y in range(len(self.labels))]
         
         ## INIT phase is not needed as the matrix is already initialized with ones
 
+        labelsList = list(self.labels)
         ## INDUCTION
         for i in range(len(sentence)-2, -1, -1):
             for j in range(len(labelsList)):
@@ -200,9 +200,9 @@ class LinearChainCRF(object):
                 sum = 0
                 for k in range(len(labelsList)):
                     label = labelsList[k]
-                    fi = self.psi(label, prevLabel, word)
+                    psi = self.psi(label, prevLabel, word)
                     prevBeta = backwardMatrix[k][i+1]
-                    sum += fi * prevBeta
+                    sum += psi * prevBeta
                 backwardMatrix[j][i] = sum
 
         return backwardMatrix
@@ -219,20 +219,20 @@ class LinearChainCRF(object):
         '''
         '''
         backwardMatrix = self.backward_variables(sentence)
-        labelsList = list(map(lambda tuple: tuple[1], sentence))
+        labelsList = list(self.labels)
         word = sentence[0][0]
-        prevLabel = 'start' # non so se è questa... cos'è y0? è riferito alla sentence?
+        prevLabel = 'start'
 
         z = 0
         for i in range(len(labelsList)):
             label = labelsList[i]
-            fi = self.psi(label, prevLabel, word)
+            psi = self.psi(label, prevLabel, word)
             betaOne = backwardMatrix[i][0]
-            z += fi * betaOne
+            z += psi * betaOne
         '''
         
         forwardMatrix = self.forward_variables(sentence)
-        labelsList = list(map(lambda tuple: tuple[1], sentence))
+        labelsList = list(self.labels)
         lastWordIndex = len(sentence)-1
 
         z = 0
