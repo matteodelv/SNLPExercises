@@ -1,6 +1,12 @@
-a q
-b r
+Barack NN
+Obama NN
+is VBZ
+a PREP
+president NN
 
-c t
-d e
+Michelle NN
+Obama NN
+is VBZ
+his ADJ
+wife NN
 

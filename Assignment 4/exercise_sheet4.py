@@ -155,27 +155,27 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of forward variables
         '''
-        forwardMatrix = [[0 for x in range(len(sentence))] for y in range(len(self.labels))]
-
+        
+        forwardMatrix = [dict() for x in range(len(sentence))]
         labelsList = list(self.labels)
-        ## INIT
-        for j in range(len(labelsList)):
+
+        # INIT
+        for label in labelsList:
             word = sentence[0][0]
             prevLabel = 'start'
-            forwardMatrix[j][0] = self.psi(labelsList[j], prevLabel, word)
+            psi = self.psi(label, prevLabel, word)
+            forwardMatrix[0][label] = psi
 
-        ## INDUCTION
+        # INDUCTION
         for i in range(1, len(sentence)):
-            for j in range(len(labelsList)):
+            for label in labelsList:
                 word = sentence[i][0]
-                label = labelsList[j]
                 sum = 0
-                for k in range(len(labelsList)):
-                    prevLabel = labelsList[k]
+                for prevLabel in labelsList:
                     psi = self.psi(label, prevLabel, word)
-                    prevAlpha = forwardMatrix[k][i-1]
+                    prevAlpha = forwardMatrix[i-1][prevLabel]
                     sum += psi * prevAlpha
-                forwardMatrix[j][i] = sum
+                forwardMatrix[i][label] = sum
 
         return forwardMatrix
   
@@ -187,23 +187,24 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of backward variables
         '''
-        backwardMatrix = [[1 for x in range(len(sentence))] for y in range(len(self.labels))]
-        
-        ## INIT phase is not needed as the matrix is already initialized with ones
-
+        backwardMatrix = [dict() for x in range(len(sentence))]
         labelsList = list(self.labels)
-        ## INDUCTION
+
+        # INIT
+        lastIndex = len(sentence)-1
+        for label in labelsList:
+            backwardMatrix[lastIndex][label] = 1
+
+        # INDUCTION
         for i in range(len(sentence)-2, -1, -1):
-            for j in range(len(labelsList)):
-                word = sentence[i][0]
-                prevLabel = labelsList[j]
+            for prevLabel in labelsList:
+                word = sentence[i+1][0]
                 sum = 0
-                for k in range(len(labelsList)):
-                    label = labelsList[k]
+                for label in labelsList:
                     psi = self.psi(label, prevLabel, word)
-                    prevBeta = backwardMatrix[k][i+1]
+                    prevBeta = backwardMatrix[i+1][label]
                     sum += psi * prevBeta
-                backwardMatrix[j][i] = sum
+                backwardMatrix[i][prevLabel] = sum
 
         return backwardMatrix
         
@@ -236,8 +237,8 @@ class LinearChainCRF(object):
         lastWordIndex = len(sentence)-1
 
         z = 0
-        for i in range(len(labelsList)):
-            z += forwardMatrix[i][lastWordIndex]
+        for label in labelsList:
+            z += forwardMatrix[lastWordIndex][label]
         
         return z
         
@@ -245,7 +246,7 @@ class LinearChainCRF(object):
         
             
     # Exercise 1 c) ###################################################################
-    def marginal_probability(self, sentence, y_t, y_t_minus_one):
+    def marginal_probability(self, sentence, t, y_t, y_t_minus_one):
         '''
         Compute the marginal probability of the labels given by y_t and y_t_minus_one given a sentence.
         Parameters: sentence: list of strings representing a sentence.
@@ -254,9 +255,19 @@ class LinearChainCRF(object):
         Returns: float: probability;
         '''
         
-        # your code here
+        zetaNorm = 1 / self.compute_z(sentence)
+        forwardMatrix = self.forward_variables(sentence)
+        backwardMatrix = self.backward_variables(sentence)
         
-        pass
+        prob = 0.0
+        for (word, label) in sentence:
+            psi = self.psi(y_t, y_t_minus_one, word)
+            alpha = forwardMatrix[t-1][y_t_minus_one]
+            beta = backwardMatrix[t][y_t]
+            prob += alpha * psi * beta
+
+        prob = prob * zetaNorm
+        return prob
     
     
     
@@ -311,24 +322,18 @@ class LinearChainCRF(object):
 
 
 def main():
-    corpus = import_corpus('corpus_pos2.txt')
+    corpus = import_corpus('corpus_pos.txt')
+    corpus = corpus[:5]
 
     model = LinearChainCRF()
     model.initialize(corpus)
 
-    matrix = model.forward_variables(corpus[0])
-    pprint(matrix)
+    pprint(model.forward_variables(corpus[0]))
+    pprint(model.backward_variables(corpus[0]))
+    print(model.compute_z(corpus[0]))
+    print(model.marginal_probability(corpus[1], 2, 'NN', 'VBP'))
+    
 
-    matrix = model.backward_variables(corpus[0])
-    pprint(matrix)
-
-    zeta = model.compute_z(corpus[0])
-    print(zeta)
-    # print(model.features)
-    # print()
-    # print(model.labels)
-    # print()
-    # print(model.theta)
 
 
 if __name__ == '__main__':
