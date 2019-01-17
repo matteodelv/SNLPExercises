@@ -9,6 +9,7 @@ import math
 import sys
 import numpy as np
 from pprint import pprint
+import random
 
 '''
 This function can be used for importing the corpus.
@@ -58,6 +59,9 @@ class LinearChainCRF(object):
 
     activeFeatures = None
     emFeatureCounts = None
+
+    currentForwards = None
+    currentBackwards = None
     
     
     def initialize(self, corpus):
@@ -155,6 +159,8 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of forward variables
         '''
+        if self.currentForwards is not None:
+            return self.currentForwards
         
         forwardMatrix = [dict() for x in range(len(sentence))]
         labelsList = list(self.labels)
@@ -177,6 +183,7 @@ class LinearChainCRF(object):
                     sum += psi * prevAlpha
                 forwardMatrix[i][label] = sum
 
+        self.currentForwards = forwardMatrix
         return forwardMatrix
   
         
@@ -187,6 +194,9 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: data structure containing the matrix of backward variables
         '''
+        if self.currentBackwards is not None:
+            return self.currentBackwards
+
         backwardMatrix = [dict() for x in range(len(sentence))]
         labelsList = list(self.labels)
 
@@ -206,6 +216,7 @@ class LinearChainCRF(object):
                     sum += psi * prevBeta
                 backwardMatrix[i][prevLabel] = sum
 
+        self.currentBackwards = backwardMatrix
         return backwardMatrix
         
         
@@ -260,13 +271,14 @@ class LinearChainCRF(object):
         backwardMatrix = self.backward_variables(sentence)
         
         prob = 0.0
-        for (word, label) in sentence:
-            psi = self.psi(y_t, y_t_minus_one, word)
-            alpha = forwardMatrix[t-1][y_t_minus_one]
-            beta = backwardMatrix[t][y_t]
-            prob += alpha * psi * beta
+        
+        word = sentence[t][0]
+        psi = self.psi(y_t, y_t_minus_one, word)
+        alpha = forwardMatrix[t-1][y_t_minus_one] if t > 1 else 1
+        beta = backwardMatrix[t][y_t] if t < len(sentence)-1 else 1
+        prob = zetaNorm * alpha * psi * beta
+        #prob = np.log(zetaNorm) + np.log(alpha) + np.log(psi) + np.log(beta)
 
-        prob = prob * zetaNorm
         return prob
     
     
@@ -280,11 +292,18 @@ class LinearChainCRF(object):
                     feature: a feature; element of the set 'self.features'
         Returns: float;
         '''
-        
-        # your code here
-        
-        pass
-    
+        count = 0.0
+        labelsList = list(self.labels)
+
+        for t in range(len(sentence)):
+            word = sentence[t][0]
+            for label in labelsList:
+                for prevLabel in labelsList:
+                    activeFeatures = self.get_active_features(word, label, prevLabel)
+                    if feature in activeFeatures:
+                        count += self.marginal_probability(sentence, t, label, prevLabel)
+
+        return count
     
     
     
@@ -296,16 +315,36 @@ class LinearChainCRF(object):
         Parameters: num_iterations: int; number of training iterations
                     learning_rate: float
         '''
-        
-        # your code here
-        
-        pass
-    
-    
+        # Precomputing empirical counts
+        computedEmCounts = [np.zeros(len(self.features)) for x in range(len(self.corpus))]
 
-    
-    
-    
+        print("Precomputing empirical counts...")
+        for i in range(len(self.corpus)):
+            sentence = self.corpus[i]
+            for t in range(len(sentence)):
+                word = sentence[t][0]
+                label = sentence[t][1]
+                prevLabel = sentence[t-1][1] if t > 0 else 'start'
+                computedEmCounts[i] += self.empirical_feature_count(word, label, prevLabel)
+
+        print("Training started...")
+        
+        for i in range(num_iterations):
+            print("Iteration", i+1)
+            randomIndex = random.choice(range(len(self.corpus)))
+            randomSentence = self.corpus[randomIndex]
+            exCounts = np.zeros(len(self.features))
+            emCounts = computedEmCounts[randomIndex]
+
+            for feature in self.features.values():
+                exCounts[feature] = self.expected_feature_count(randomSentence, feature)
+
+            self.theta = self.theta + learning_rate * (emCounts - exCounts)
+
+            self.currentForwards = None
+            self.currentBackwards = None
+
+
     
     # Exercise 2 ###################################################################
     def most_likely_label_sequence(self, sentence):
@@ -323,17 +362,12 @@ class LinearChainCRF(object):
 
 def main():
     corpus = import_corpus('corpus_pos.txt')
-    corpus = corpus[:5]
+    corpus = corpus[:25]
 
     model = LinearChainCRF()
     model.initialize(corpus)
-
-    pprint(model.forward_variables(corpus[0]))
-    pprint(model.backward_variables(corpus[0]))
-    print(model.compute_z(corpus[0]))
-    print(model.marginal_probability(corpus[1], 2, 'NN', 'VBP'))
     
-
+    model.train(10, 0.1)
 
 
 if __name__ == '__main__':
