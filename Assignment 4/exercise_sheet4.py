@@ -263,6 +263,7 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
                     y_t: element of the set 'self.labels'; label assigned to the word at position t
                     y_t_minus_one: element of the set 'self.labels'; label assigned to the word at position t-1
+                    t: int; position of the word the label y_t is assigned to
         Returns: float: probability;
         '''
         
@@ -274,10 +275,9 @@ class LinearChainCRF(object):
         
         word = sentence[t][0]
         psi = self.psi(y_t, y_t_minus_one, word)
-        alpha = forwardMatrix[t-1][y_t_minus_one] if t > 1 else 1
-        beta = backwardMatrix[t][y_t] if t < len(sentence)-1 else 1
+        alpha = 1 if t == 0 else forwardMatrix[t-1][y_t_minus_one]
+        beta = 1 if t == len(sentence)-1 else backwardMatrix[t][y_t]
         prob = zetaNorm * alpha * psi * beta
-        #prob = np.log(zetaNorm) + np.log(alpha) + np.log(psi) + np.log(beta)
 
         return prob
     
@@ -295,7 +295,14 @@ class LinearChainCRF(object):
         count = 0.0
         labelsList = list(self.labels)
 
-        for t in range(len(sentence)):
+        # start case
+        word = sentence[0][0]
+        for label in labelsList:
+            activeFeatures = self.get_active_features(word, label, 'start')
+            if feature in activeFeatures:
+                count += self.marginal_probability(sentence, 0, label, 'start')
+
+        for t in range(1, len(sentence)):
             word = sentence[t][0]
             for label in labelsList:
                 for prevLabel in labelsList:
@@ -328,7 +335,6 @@ class LinearChainCRF(object):
                 computedEmCounts[i] += self.empirical_feature_count(word, label, prevLabel)
 
         print("Training started...")
-        
         for i in range(num_iterations):
             print("Iteration", i+1)
             randomIndex = random.choice(range(len(self.corpus)))
@@ -340,6 +346,7 @@ class LinearChainCRF(object):
                 exCounts[feature] = self.expected_feature_count(randomSentence, feature)
 
             self.theta = self.theta + learning_rate * (emCounts - exCounts)
+            print("new theta:", self.theta, "\n")
 
             self.currentForwards = None
             self.currentBackwards = None
@@ -353,21 +360,58 @@ class LinearChainCRF(object):
         Parameters: sentence: list of strings representing a sentence.
         Returns: list of lables; each label is an element of the set 'self.labels'
         '''
-        
-        # your code here
-        
-        pass
+        deltaMatrix = [[None for x in range(len(sentence))] for y in range(len(self.labels))]
+        gammaMatrix = [[None for x in range(len(sentence))] for y in range(len(self.labels))]
+        sequenceTagging = [None for x in range(len(sentence))]
+
+        labelsList = list(self.labels)
+
+        ## INIT
+        for i in range(len(labelsList)):
+            label = labelsList[i]
+            word = sentence[0][0]
+            deltaMatrix[i][0] = np.log(self.psi(label, 'start', word))
+
+        ## INDUCTION
+        for i in range(1, len(sentence)):
+            for j in range(len(labelsList)):
+                maxVal = 0.0
+                maxValIndex = -1
+                for k in range(len(labelsList)):
+                    word = sentence[i][0]
+                    label = labelsList[j]
+                    prevLabel = labelsList[k]
+                    precDelta = deltaMatrix[k][i-1]
+                    value = np.log(self.psi(label, prevLabel, word)) + precDelta
+                    if value > maxVal:
+                        maxVal = value
+                        maxValIndex = k
+                deltaMatrix[j][i] = maxVal
+                gammaMatrix[j][i] = maxValIndex
+
+        ## TOTAL
+        lastCol = [deltaMatrix[k][len(sentence)-1] for k in range(len(labelsList))]
+        nextIndex = lastCol.index(max(lastCol))
+        sequenceTagging[len(sentence)-1] = labelsList[nextIndex]
+
+        for i in range(len(sentence)-1, 0, -1):
+            nextIndex = gammaMatrix[nextIndex][i]
+            sequenceTagging[i-1] = labelsList[nextIndex]
+
+        return sequenceTagging
+
 
 
 
 def main():
     corpus = import_corpus('corpus_pos.txt')
-    corpus = corpus[:25]
+    corpus = corpus[1:50]
 
     model = LinearChainCRF()
     model.initialize(corpus)
-    
-    model.train(10, 0.1)
+
+    model.train(20)
+    print("\n", model.most_likely_label_sequence(corpus[0]))
 
 
 if __name__ == '__main__':

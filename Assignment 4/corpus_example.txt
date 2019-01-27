@@ -1,0 +1,18 @@
+The DT
+cat NN
+loves VBZ
+the DT
+dog NN
+
+The DT
+dog NN
+loves VBZ
+the DT
+man NN
+
+The DT
+man NN
+loves VBZ
+the DT
+cat NN
+
