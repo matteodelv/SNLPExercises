@@ -1,4 +1,4 @@
-Matteo Del Vecchio - Uni-ID: 3885057
+Matteo Del Vecchio
 Assignment 1 - Statistical Natural Language Processing
 
 

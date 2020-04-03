@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-# Matteo Del Vecchio - Uni-ID: 3885057
+# Matteo Del Vecchio
 
 from utils import preprocessing
 from unigram import unigram

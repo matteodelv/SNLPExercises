@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Matteo Del Vecchio - Uni-ID: 3885057
+# Matteo Del Vecchio
 # SNLP - Assignment 2
 
 import numpy

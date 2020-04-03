@@ -1,4 +1,4 @@
-# Matteo Del Vecchio - Uni-ID: 3885057
+# Matteo Del Vecchio
 
 from utils import sortByP, getSampledIndex
 from bigram import bigramSample
